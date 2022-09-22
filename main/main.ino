@@ -2,7 +2,6 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 
-
 //***********************************
 //************ PINES ****************
 //***********************************
@@ -39,9 +38,9 @@ const char* password = "miclave";
 //MQTT
 const char* mqtt_server = "ioticos.org";
 const int mqtt_port = 1883;
-const char* mqtt_user = "eF0qt5zQzMpiGG7";
-const char* mqtt_password = "E7Hyt2VQfcSl9gk";
-const String root_topic = "NvZOWtTvjtiJLYp";
+const char* mqtt_user = "";
+const char* mqtt_password = "";
+const String root_topic = "";
 
 //Servo
 #define servo_max_ang 180
@@ -105,15 +104,101 @@ void loop() {
   if (!client.connected()) {
     reconnect();
   }
-  delay(300);
-  for (int i = servo_min_ang; i < servo_max_ang; i += servo_step) {
-    //mover el servo en un angulo que sera igual a i servo(i)
-    //calcular distancia d = distance();
-    //enviar informacion por MQTT enviar(i,d)
-  }
+  delay(300);// tiempo para que el servo pueda desplazarse posición inicial
+  for (int posDegrees = servo_min_ang; posDegrees <= servo_max_ang; posDegrees += servo_step) {
+    //servo padece a menor de 24 grados, if para no romper
+    if (posDegrees > 24) {
+      //mover el servo en un ángulo que será igual a i servo(i)
+      servo.write(180 - posDegrees);
+    }
+    delay(servo_speed); // evitar dar órdenes tan rápidas al servo
+    //al radar se le debe enviar la distancia y el ángulo
 
+    //calcular distancia d = distance();
+    toSend = String(distance()) + "," + String(posDegrees);
+    toSend.toCharArray(buf, 20);
+    //enviar información por MQTT enviar(i,d)
+    client.publish("NvZOWtTvjtiJLYp/map", buf);
+    client.loop();
+  }
+  servo.write(155);//poner servo posicion inicial
+}
+int distance() {
+  digitalWrite(pin_trig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(pin_trig, LOW);
+  unsigned long timeEcho = pulseIn(pin_echo, HIGH);
+  int distance = timeEcho / 58;
+  return distance;
 }
 
+void movement(String action) {
+  // switch no permitedatos tipo string, usar if else
+  if (action == "straight") {
+    //rueda1
+    digitalWrite(pin_n1, LOW);
+    digitalWrite(pin_n2, HIGH);
+    //rueda 2
+    digitalWrite(pin_n3, HIGH);
+    digitalWrite(pin_n4, LOW);
+  } else if (action == "back") {
+    digitalWrite(pin_n1, HIGH);
+    digitalWrite(pin_n2, LOW);
+    digitalWrite(pin_n3, LOW);
+    digitalWrite(pin_n4, HIGH);
+  } else if (action == "left") {
+    digitalWrite(pin_n1, HIGH);
+    digitalWrite(pin_n2, LOW);
+    digitalWrite(pin_n3, HIGH);
+    digitalWrite(pin_n4, LOW);
+  } else if (action == "right") {
+    digitalWrite(pin_n1, LOW);
+    digitalWrite(pin_n2, HIGH);
+    digitalWrite(pin_n3, LOW);
+    digitalWrite(pin_n4, HIGH);
+  } else if (action == "stop") {
+    digitalWrite(pin_n1, LOW);
+    digitalWrite(pin_n2, LOW);
+    digitalWrite(pin_n3, LOW);
+    digitalWrite(pin_n4, LOW);
+  }
+  /*switch (action) {
+    case "straight":
+      //rueda1
+      digitalWrite(pin_n1, LOW);
+      digitalWrite(pin_n2, HIGH);
+      //rueda 2
+      digitalWrite(pin_n3, HIGH);
+      digitalWrite(pin_n4, LOW);
+      break;
+    case "back":
+      digitalWrite(pin_n1, HIGH);
+      digitalWrite(pin_n2, LOW);
+      digitalWrite(pin_n3, LOW);
+      digitalWrite(pin_n4, HIGH);
+      break;
+
+    case "left":
+      digitalWrite(pin_n1, HIGH);
+      digitalWrite(pin_n2, LOW);
+      digitalWrite(pin_n3, HIGH);
+      digitalWrite(pin_n4, LOW);
+      break;
+    case "right":
+      digitalWrite(pin_n1, LOW);
+      digitalWrite(pin_n2, HIGH);
+      digitalWrite(pin_n3, LOW);
+      digitalWrite(pin_n4, HIGH);
+      break;
+
+    case "stop":
+      digitalWrite(pin_n1, LOW);
+      digitalWrite(pin_n2, LOW);
+      digitalWrite(pin_n3, LOW);
+      digitalWrite(pin_n4, LOW);
+      break;
+    }*/
+}
 //***********************************
 //************ WiFi *****************
 //***********************************
@@ -124,7 +209,7 @@ void setup_wifi() {
   Serial.print("Conectando a ");
   Serial.println(ssid);
 
- // WiFi.begin(ssid, password); // ERROR
+  // WiFi.begin(ssid, password); // ERROR
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -139,31 +224,33 @@ void setup_wifi() {
 
 void callback(char *topic, byte *payload, unsigned int length) {
   String incoming = "";
+
   Serial.print("Mensaje recibido -> ");
   Serial.print(topic);
   Serial.print("");
+
   for (int i = 0; i < length; i++) {
     incoming += (char)payload[i];
   }
   incoming.trim();
   Serial.print("Mensaje -> " + incoming);
-  /*String topic_str(topic);
-    if (topic_str == root_topic + "/movenent") {
-    movement(incoming)
-    }*/
+  String topic_str(topic);
+  if (topic_str == root_topic + "/movement") {
+    movement(incoming);
+  }
 }
 
 void reconnect() {
   while (!client.connected()) {
-    Serial.print("Intentando conexión MQTT");
+    Serial.print("Intentando conexión MQTT...");
 
-    String clientId = "ALAN_";
+    String clientId = "NALA_";
     clientId += String(random(0xffff, HEX));
 
     if (client.connect(clientId.c_str(), mqtt_user, mqtt_password)) {
       Serial.println("Conectado!");
       if (client.subscribe("NvZOWtTvjtiJLYp/movement")) {
-        Serial.println("Subscripcion O.K");
+        Serial.println("Subscripcion OK");
       } else {
         Serial.println("Fallo de Subscripcion");
       }
