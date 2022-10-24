@@ -38,9 +38,9 @@ const char* password = "miclave";
 //MQTT
 const char* mqtt_server = "ioticos.org";
 const int mqtt_port = 1883;
-const char* mqtt_user = "";
-const char* mqtt_password = "";
-const String root_topic = "";
+const char* mqtt_user = "eF0qt5zQzMpiGG7";
+const char* mqtt_password = "E7Hyt2VQfcSl9gk";
+const String root_topic = "NvZOWtTvjtiJLYp";
 
 //Servo
 #define servo_max_ang 180
@@ -263,3 +263,16 @@ void reconnect() {
   }
 
 }
+/******Ensamblaje*******/
+/*
+1- Chasís
+2- Ruedas(2)Motores DC (2)
+3- tercera rueda(patin de cola o rueda loca)
+3- Power Bank
+
+- ESP32
+- sensor de distancia ultrasónico HC-SR04(trig usar resistencia 3K3)
+- micro servo SG90
+- conrolador L298N (H-Bridge)
+
+*/
